@@ -212,10 +212,12 @@ async function runGoal(goal) {
     let fate = verdict?.fate ?? r.fate ?? 'keep';
     say('todd', `${m.nickname}: ${r.roast ?? ''} ${r.review ?? ''}`.trim(), { goalId: goal.id, worker: m.worker });
     if (verdict) say('jev', `${judgeName(verdict)} on ${m.nickname}: ship ${(verdict.ship * 100).toFixed(0)}% likely. Verdict: ${fate}.`, { goalId: goal.id, worker: m.worker, data: verdict });
-    if (fate === 'redo' && r.feedback) {
+    if (fate === 'redo') {
+      // The judge's "redo" wins even when Todd's own review left no fix: then the review itself is the brief.
+      const fix = r.feedback || `Fix what the review found: ${r.review ?? 'prove it works'}`;
       m.round = 2;
-      say('todd', `${m.nickname}, again. ${r.feedback}`, { goalId: goal.id, worker: m.worker });
-      result = await runMember(goal.text, m, onStep, r.feedback);
+      say('todd', `${m.nickname}, again. ${fix}`, { goalId: goal.id, worker: m.worker });
+      result = await runMember(goal.text, m, onStep, fix);
       r = await review(goal.text, m, result);
       verdict = await jev.verdict({ goal: goal.text, task: m.task, report: JSON.stringify(result).slice(0, 6000), review: r.review }).catch(() => null);
       fate = verdict?.fate === 'redo' ? 'keep' : (verdict?.fate ?? r.fate ?? 'keep');
