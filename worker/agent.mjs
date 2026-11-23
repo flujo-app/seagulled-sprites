@@ -26,7 +26,8 @@ function run(command, timeoutMs = 90_000) {
     child.stdout.on('data', add);
     child.stderr.on('data', add);
     const timer = setTimeout(() => { out += `\n[stopped after ${timeoutMs / 1000}s]`; child.kill('SIGKILL'); }, timeoutMs);
-    child.on('close', code => { clearTimeout(timer); resolve({ code, out }); });
+    // The Sprite's .bashrc warns about line editing on every login shell: noise, not output.
+    child.on('close', code => { clearTimeout(timer); resolve({ code, out: out.replace(/^.*bind: warning: line editing not enabled\r?\n?/gm, '') }); });
   });
 }
 
