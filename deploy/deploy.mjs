@@ -83,6 +83,8 @@ console.log('Todd:');
 await upload(BOSS, ['lib', 'todd']);
 const PASSCODE = process.env.TODD_PASSCODE;
 if (PASSCODE) await put(BOSS, '.todd/passcode', PASSCODE, '0600');
+// Optional Slack channel (its ID, e.g. C0123ABC) for the play-by-play; Todd also takes goals there that start with "Todd".
+if (process.env.TODD_SLACK_CHANNEL) await put(BOSS, '.todd/config.json', JSON.stringify({ slackChannel: process.env.TODD_SLACK_CHANNEL, slackListen: process.env.TODD_SLACK_LISTEN !== '0' }));
 await service(BOSS, 'todd', 'todd/server.mjs');
 // With a passcode set, Todd's page can be public: anyone can watch, only the passcode gives him work.
 await apiJson('PUT', `/v1/sprites/${BOSS}`, { url_settings: { auth: PASSCODE ? 'public' : 'sprite' } });
