@@ -91,7 +91,7 @@ async function plan(goal, memories) {
   const recalled = memories.length ? memories.map(m => `- (${m.at?.slice(0, 10) ?? '?'}) ${m.text}`).join('\n') : 'Nothing. First time this comes up.';
   return brain.chatJson([
     { role: 'system', content: PERSONA },
-    { role: 'user', content: `New goal from the boss:\n"""${goal}"""\n\nWhat you remember from earlier goals (Pinecone memory):\n${recalled}\n\nDecide how to staff it. You can hire 1 to 3 workers; each gets their own fresh Linux computer for at most ~10 minutes and about a dozen actions, so every assignment must be small, concrete and checkable (files to write, commands that prove it works). Split work so workers do not depend on each other. If the goal is just a question you can answer yourself, hire nobody.\n\nAnswer with only JSON:\n{"reply":"your first reaction to the boss, 1-3 short sentences, in character","title":"3-6 word title","team":[{"role":"developer|tester|writer|researcher|designer","nickname":"a made-up first name","task":"the exact assignment"}]}` },
+    { role: 'user', content: `New goal from the boss:\n"""${goal}"""\n\nWhat you remember from earlier goals (Pinecone memory):\n${recalled}\n\nDecide how to staff it. You can hire 1 to 3 workers (keep it to 1 or 2 unless the goal really needs more: there is one desk, so they work in shifts, one after another); each gets their own brand-new Linux computer for at most ~10 minutes and about a dozen actions, and it is deleted afterwards, so every assignment must be small, concrete and checkable (files to write, commands that prove it works). Split work so workers do not depend on each other. If the goal is just a question you can answer yourself, hire nobody.\n\nAnswer with only JSON:\n{"reply":"your first reaction to the boss, 1-3 short sentences, in character","title":"3-6 word title","team":[{"role":"developer|tester|writer|researcher|designer","nickname":"a made-up first name","task":"the exact assignment"}]}` },
   ], { temperature: 0.6 });
 }
 
@@ -165,19 +165,10 @@ async function runGoal(goal) {
   const budget = await hr.budget();
   say('hr', `Budget check: $${budget.spentUsd.toFixed(3)} of $${budget.capUsd} used. ${budget.onTheFloor.length} on the floor.`, { goalId: goal.id, data: budget });
 
-  // Hire everyone at once: each hire is a brand-new Sprite.
-  const hires = await Promise.allSettled(team.map(t => hr.hire({ role: t.role, nickname: t.nickname })));
-  hires.forEach((h, i) => {
-    const t = team[i];
-    if (h.status === 'fulfilled') {
-      goal.team.push({ ...t, worker: h.value.name, status: 'working', steps: [], round: 1 });
-      say('hr', `Hired ${t.nickname} (${t.role}) into a fresh Sprite: ${h.value.name}.`, { goalId: goal.id, worker: h.value.name });
-    } else {
-      say('hr', `Could not hire ${t.nickname}: ${String(h.reason?.message ?? h.reason).slice(0, 200)}`, { goalId: goal.id });
-    }
-  });
-  if (!goal.team.length) throw new Error('HR would not give me anybody.');
-  save();
+  // Each hire is a brand-new Sprite. The Free plan allows 3 Sprites in total and Todd + HR are two of them,
+  // so there may be only one desk: then the team works in shifts, each in a fresh Sprite that is deleted afterwards.
+  const desks = Math.max(1, Math.min(team.length, Number(budget.maxWorkers) || 1));
+  if (team.length > desks) say('hr', `${desks === 1 ? 'One desk' : `${desks} desks`} on the floor (Free plan), so ${team.map(t => t.nickname).join(', ')} work in shifts.`, { goalId: goal.id });
 
   const onStep = (m, ev) => {
     const text = ev.kind === 'write' ? `wrote ${ev.path}` : ev.kind === 'run' ? `$ ${ev.command}` : ev.kind === 'output' ? `exit ${ev.code}` : ev.kind === 'error' ? `stumbled: ${ev.message}` : ev.kind;
@@ -189,7 +180,32 @@ async function runGoal(goal) {
     if (goal.team.some(m => m.status === 'working')) say('todd', await flyOver(goal.text, goal.team).catch(() => 'Is anyone actually typing?'), { goalId: goal.id, flyover: true });
   });
 
-  const results = await Promise.all(goal.team.map(async m => {
+  async function hire(t) {
+    try {
+      const h = await hr.hire({ role: t.role, nickname: t.nickname });
+      const m = { ...t, worker: h.name, status: 'working', steps: [], round: 1 };
+      goal.team.push(m);
+      say('hr', `Hired ${t.nickname} (${t.role}) into a fresh Sprite: ${h.name}.`, { goalId: goal.id, worker: h.name });
+      save();
+      return m;
+    } catch (err) {
+      say('hr', `Could not hire ${t.nickname}: ${String(err.message ?? err).slice(0, 200)}`, { goalId: goal.id });
+      return null;
+    }
+  }
+
+  const queue = [...team];
+  const results = [];
+  await Promise.all(Array.from({ length: desks }, async () => {
+    while (queue.length) {
+      const m = await hire(queue.shift());
+      if (m) results.push(await shift(m));
+    }
+  }));
+  await flyBy.catch(() => {});
+  if (!results.length) throw new Error('HR would not give me anybody.');
+
+  async function shift(m) {
     let result = await runMember(goal.text, m, onStep);
     let r = await review(goal.text, m, result);
     let verdict = await jev.verdict({ goal: goal.text, task: m.task, report: JSON.stringify(result).slice(0, 6000), review: r.review }).catch(() => null);
@@ -211,8 +227,7 @@ async function runGoal(goal) {
     await hr.fire(m.worker, fate).catch(() => {});
     say('hr', `${m.nickname} (${m.worker}): ${exit} Sprite deleted.`, { goalId: goal.id, worker: m.worker, fired: true });
     return { m, result, fate };
-  }));
-  await flyBy.catch(() => {});
+  }
 
   // Ship what passed.
   const keep = results.filter(x => x.fate !== 'fire').flatMap(x => (x.result?.files ?? []).filter(f => f.content != null).map(f => ({ name: `${x.m.nickname}-${f.name}`.replace(/[\\/]/g, '_'), content: f.content })));
