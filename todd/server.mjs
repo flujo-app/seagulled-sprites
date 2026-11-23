@@ -175,10 +175,10 @@ async function runGoal(goal) {
     say('worker', text, { goalId: goal.id, worker: m.worker, nickname: m.nickname, data: ev.kind === 'output' ? { code: ev.code, tail: String(ev.tail ?? '').slice(-400) } : ev.thought ? { thought: ev.thought } : undefined });
   };
 
-  // Todd flies over once, while they work.
-  const flyBy = sleep(70_000 + Math.random() * 40_000).then(async () => {
-    if (goal.team.some(m => m.status === 'working')) say('todd', await flyOver(goal.text, goal.team).catch(() => 'Is anyone actually typing?'), { goalId: goal.id, flyover: true });
-  });
+  // Todd flies over once, while they work. Nobody waits for it: if the work is over first, he stays home.
+  sleep(70_000 + Math.random() * 40_000).then(async () => {
+    if (goal.status === 'working' && goal.team.some(m => m.status === 'working')) say('todd', await flyOver(goal.text, goal.team).catch(() => 'Is anyone actually typing?'), { goalId: goal.id, flyover: true });
+  }).catch(() => {});
 
   async function hire(t) {
     try {
@@ -202,7 +202,6 @@ async function runGoal(goal) {
       if (m) results.push(await shift(m));
     }
   }));
-  await flyBy.catch(() => {});
   if (!results.length) throw new Error('HR would not give me anybody.');
 
   async function shift(m) {
