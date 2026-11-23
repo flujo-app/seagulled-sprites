@@ -50,15 +50,17 @@ const hr = {
 };
 
 // ---- Slack (optional): Todd posts the play-by-play and takes goals from one channel ----
+const CONFIG = JSON.parse(await readFile(path.join(HOME, '.todd', 'config.json'), 'utf8').catch(() => '{}'));
 const slack = {
-  channel: process.env.TODD_SLACK_CHANNEL ?? null,
+  channel: process.env.TODD_SLACK_CHANNEL ?? CONFIG.slackChannel ?? null,
+  listening: (process.env.TODD_SLACK_LISTEN ?? (CONFIG.slackListen ? '1' : '0')) === '1',
   lastTs: null,
   async post(ev) {
     if (!this.channel || !['todd', 'jev', 'hr', 'box'].includes(ev.kind) || !(await gw.has('slack_bot'))) return;
     await gw.json('slack_bot', '/chat.postMessage', { channel: this.channel, text: `${ev.kind === 'todd' ? '*Todd:* ' : `_${ev.kind}:_ `}${ev.text}`.slice(0, 3500) });
   },
   async listen() {
-    if (!this.channel || process.env.TODD_SLACK_LISTEN !== '1' || !(await gw.has('slack_bot'))) return;
+    if (!this.channel || !this.listening || !(await gw.has('slack_bot'))) return;
     const hist = await gw.json('slack_bot', `/conversations.history?channel=${encodeURIComponent(this.channel)}&limit=10${this.lastTs ? `&oldest=${this.lastTs}` : ''}`).catch(() => null);
     const msgs = (hist?.messages ?? []).filter(m => !m.bot_id && m.text).reverse();
     if (!this.lastTs) { this.lastTs = hist?.messages?.[0]?.ts ?? String(Date.now() / 1000); return; }
@@ -72,6 +74,7 @@ const slack = {
 setInterval(() => slack.listen().catch(() => {}), 20_000).unref();
 
 // ---- the job ----
+const judgeName = v => v.judge === 'jev' ? 'Jev' : 'Stand-in judge (Jev format)';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function services() {
@@ -143,13 +146,13 @@ async function startGoal(text, from = 'web') {
 
 async function runGoal(goal) {
   const svc = await services();
-  if (!svc.ollama && !svc.gemini) throw new Error('I have no brain connected. Somebody add the Ollama connector.');
+  if (!svc.ollama && !svc.gemini) throw new Error('I have no brain connected. Somebody add the Ollama or Gemini connector.');
 
   let memories = [];
-  if (svc.pinecone) {
+  {
     memories = await memory.recall(goal.text).catch(err => { say('memory', `Memory is foggy (${String(err.message).slice(0, 120)}).`); return []; });
     const relevant = memories.filter(m => (m.score ?? 0) > 0.35);
-    if (relevant.length) say('memory', `Todd remembers: ${relevant.map(m => m.text.slice(0, 160)).join(' / ')}`, { goalId: goal.id, data: relevant });
+    if (relevant.length) say('memory', `Todd remembers (${svc.pinecone ? 'Pinecone' : 'his notebook'}): ${relevant.map(m => m.text.slice(0, 160)).join(' / ')}`, { goalId: goal.id, data: relevant });
   }
 
   const p = await plan(goal.text, memories);
@@ -188,19 +191,19 @@ async function runGoal(goal) {
   const results = await Promise.all(goal.team.map(async m => {
     let result = await runMember(goal.text, m, onStep);
     let r = await review(goal.text, m, result);
-    let verdict = await (svc.typesafe ? jev.verdict({ goal: goal.text, task: m.task, report: JSON.stringify(result).slice(0, 6000), review: r.review }).catch(() => null) : null);
+    let verdict = await jev.verdict({ goal: goal.text, task: m.task, report: JSON.stringify(result).slice(0, 6000), review: r.review }).catch(() => null);
     let fate = verdict?.fate ?? r.fate ?? 'keep';
     say('todd', `${m.nickname}: ${r.roast ?? ''} ${r.review ?? ''}`.trim(), { goalId: goal.id, worker: m.worker });
-    if (verdict) say('jev', `Jev on ${m.nickname}: ship ${(verdict.ship * 100).toFixed(0)}% likely. Verdict: ${fate}.`, { goalId: goal.id, worker: m.worker, data: verdict });
+    if (verdict) say('jev', `${judgeName(verdict)} on ${m.nickname}: ship ${(verdict.ship * 100).toFixed(0)}% likely. Verdict: ${fate}.`, { goalId: goal.id, worker: m.worker, data: verdict });
     if (fate === 'redo' && r.feedback) {
       m.round = 2;
       say('todd', `${m.nickname}, again. ${r.feedback}`, { goalId: goal.id, worker: m.worker });
       result = await runMember(goal.text, m, onStep, r.feedback);
       r = await review(goal.text, m, result);
-      verdict = await (svc.typesafe ? jev.verdict({ goal: goal.text, task: m.task, report: JSON.stringify(result).slice(0, 6000), review: r.review }).catch(() => null) : null);
+      verdict = await jev.verdict({ goal: goal.text, task: m.task, report: JSON.stringify(result).slice(0, 6000), review: r.review }).catch(() => null);
       fate = verdict?.fate === 'redo' ? 'keep' : (verdict?.fate ?? r.fate ?? 'keep');
       say('todd', `${m.nickname}, second try: ${r.roast ?? ''} ${r.review ?? ''}`.trim(), { goalId: goal.id, worker: m.worker });
-      if (verdict) say('jev', `Jev on ${m.nickname}, round two: ship ${(verdict.ship * 100).toFixed(0)}% likely. Verdict: ${verdict.fate}.`, { goalId: goal.id, worker: m.worker, data: verdict });
+      if (verdict) say('jev', `${judgeName(verdict)} on ${m.nickname}, round two: ship ${(verdict.ship * 100).toFixed(0)}% likely. Verdict: ${verdict.fate}.`, { goalId: goal.id, worker: m.worker, data: verdict });
     }
     m.status = fate; m.verdict = verdict; m.review = r; m.files = (result?.files ?? []).map(f => ({ name: f.name, skipped: f.skipped, bytes: f.content?.length ?? 0 }));
     const exit = fate === 'fire' ? 'You are fired.' : fate === 'promote' ? 'Excellent. You are promoted. Also fired, budget reasons.' : 'Fine. You are fired anyway, the Sprite costs money.';
@@ -231,10 +234,10 @@ async function runGoal(goal) {
   goal.status = 'done';
   goal.finishedAt = new Date().toISOString();
 
-  if (svc.pinecone) {
+  {
     const line = `Goal "${goal.text.slice(0, 300)}" -> ${results.map(x => `${x.m.nickname} the ${x.m.role}: ${x.fate}${x.m.review?.feedback ? ` (needed: ${x.m.review.feedback.slice(0, 120)})` : ''}`).join('; ')}`;
     await memory.remember(`goal-${goal.id}`, line, { goal: goal.text.slice(0, 500), verdict: results.map(x => x.fate).join(','), at: goal.finishedAt })
-      .then(() => say('memory', 'Filed under "things I will bring up later" (Pinecone).', { goalId: goal.id }))
+      .then(where => say('memory', `Filed under "things I will bring up later" (${where === 'pinecone' ? 'Pinecone' : 'notebook on his Sprite'}).`, { goalId: goal.id }))
       .catch(err => say('memory', `Could not file the memory: ${String(err.message).slice(0, 150)}`, { goalId: goal.id }));
   }
 }
