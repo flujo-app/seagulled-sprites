@@ -82,6 +82,7 @@ async function services() {
   const on = p => list.some(c => c.provider === p);
   return {
     hr: list.some(c => c.provider === 'custom_api' && (c.display_name === 'todd-hr' || c.provider_account_name === 'todd-hr')),
+    brain: list.some(c => c.provider === 'custom_api' && (c.display_name === 'todd-brain' || c.provider_account_name === 'todd-brain')),
     ollama: on('ollama'), gemini: on('gemini'), typesafe: on('typesafe'), pinecone: on('pinecone'), box: on('box'), slack: on('slack_bot'), github: on('github'),
   };
 }
@@ -146,7 +147,7 @@ async function startGoal(text, from = 'web') {
 
 async function runGoal(goal) {
   const svc = await services();
-  if (!svc.ollama && !svc.gemini) throw new Error('I have no brain connected. Somebody add the Ollama or Gemini connector.');
+  if (!svc.brain && !svc.ollama && !svc.gemini) throw new Error('I have no brain connected. Somebody add the Ollama or Gemini connector.');
 
   let memories = [];
   {
