@@ -81,9 +81,13 @@ await apiJson('PUT', `/v1/sprites/${HR}`, { url_settings: { auth: 'public' } });
 
 console.log('Todd:');
 await upload(BOSS, ['lib', 'todd']);
+const PASSCODE = process.env.TODD_PASSCODE;
+if (PASSCODE) await put(BOSS, '.todd/passcode', PASSCODE, '0600');
 await service(BOSS, 'todd', 'todd/server.mjs');
+// With a passcode set, Todd's page can be public: anyone can watch, only the passcode gives him work.
+await apiJson('PUT', `/v1/sprites/${BOSS}`, { url_settings: { auth: PASSCODE ? 'public' : 'sprite' } });
 
 console.log('\nDone.');
-console.log(`Todd (private, sign in with your Fly account): ${boss.url}`);
+console.log(`Todd (${PASSCODE ? 'public to watch, passcode to give work' : 'private, sign in with your Fly account'}): ${boss.url}`);
 console.log(`HR door (public, needs the door code): ${hr.url}`);
 if (!process.env.HR_DOOR_CODE) console.log(`\nNew HR door code (put it into the "todd-hr" Custom API connector as the token):\n${DOOR}`);

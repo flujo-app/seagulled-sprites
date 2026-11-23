@@ -15,6 +15,8 @@ const HOME = '/home/sprite';
 const DATA = path.join(HOME, 'todd-data');
 const UI = path.join(path.dirname(new URL(import.meta.url).pathname), 'ui.html');
 await mkdir(path.join(DATA, 'deliveries'), { recursive: true });
+// Anyone may watch Todd's page; only someone with the passcode may give him work (work costs money).
+const PASSCODE = (process.env.TODD_PASSCODE ?? await readFile(path.join(HOME, '.todd', 'passcode'), 'utf8').catch(() => '')).trim();
 
 const PERSONA = `You are Todd, a manager in a small, slightly cursed company. You are busy, blunt, dryly funny and you only trust evidence.
 You "seagull manage": you fly in, make noise, judge everything, and fly off. You are rude about work, never about people's identity; no slurs, nothing cruel. Short sentences.
@@ -255,6 +257,7 @@ http.createServer(async (req, res) => {
       return send(200, { events: state.events.filter(e => e.id > since), goals: state.goals.slice(-10).map(g => ({ ...g, team: g.team.map(({ steps, ...m }) => ({ ...m, stepCount: steps?.length ?? 0 })) })), busy: Boolean(busy), services: svc, budget, model: brain.usage });
     }
     if (url.pathname === '/api/goal' && req.method === 'POST') {
+      if (PASSCODE && req.headers['x-todd-passcode'] !== PASSCODE) return send(401, { error: 'Todd does not take orders from strangers.' });
       const { text } = await readBody(req);
       if (!text || String(text).length > 4000) return send(400, { error: 'Tell Todd something, 1-4000 characters.' });
       const g = await startGoal(String(text).trim());
