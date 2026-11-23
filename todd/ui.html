@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seagulled · Todd on Sprites</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐦</text></svg>">
+<style>
+:root {
+  --bg: #f3efe6; --panel: #fffdf8; --ink: #23211c; --muted: #6f6a5e; --line: #e2dccd;
+  --todd: #1f4e79; --todd-bg: #e7eef6; --you: #4a3f2a; --you-bg: #f1e7d3;
+  --ok: #2e7d4f; --warn: #b7791f; --bad: #b23b3b; --accent: #d9a400; --chip: #ece6d8;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #17181b; --panel: #202226; --ink: #ecebe6; --muted: #a29f95; --line: #34363c;
+    --todd: #8cb8e6; --todd-bg: #1d2a38; --you: #e6d3ad; --you-bg: #2f2a20; --ok: #6cc596; --warn: #e2b04f; --bad: #ef7b7b; --accent: #f0c419; --chip: #2b2d33; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+header h1 { margin: 0; font-size: 19px; letter-spacing: .2px; }
+header h1 small { font-weight: 500; color: var(--muted); font-size: 13px; margin-left: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.chip { font-size: 12px; padding: 3px 9px; border-radius: 99px; background: var(--chip); color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); opacity: .45; }
+.chip.on { color: var(--ink); } .chip.on i { background: var(--ok); opacity: 1; }
+main { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; padding: 16px 20px; max-width: 1400px; margin: 0 auto; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 12px 16px; } .chips { margin-left: 0; } }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; display: flex; flex-direction: column; min-height: 0; }
+section > h2 { margin: 0; padding: 12px 16px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+#chat { height: calc(100vh - 210px); min-height: 420px; }
+#feed { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.msg { max-width: 92%; padding: 9px 12px; border-radius: 12px; white-space: pre-wrap; word-wrap: break-word; }
+.msg.todd { background: var(--todd-bg); align-self: flex-start; border-top-left-radius: 4px; }
+.msg.todd b { color: var(--todd); }
+.msg.todd.flyover { border: 2px dashed var(--accent); }
+.msg.user { background: var(--you-bg); align-self: flex-end; border-top-right-radius: 4px; }
+.note { font-size: 13px; color: var(--muted); align-self: stretch; padding: 2px 4px; }
+.note.hr::before { content: "HR · "; font-weight: 600; color: var(--warn); }
+.note.jev::before { content: "Jev · "; font-weight: 600; color: var(--todd); }
+.note.memory::before { content: "Memory · "; font-weight: 600; color: var(--ok); }
+.note.box::before { content: "Box · "; font-weight: 600; color: var(--ok); }
+.note a { color: inherit; }
+form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+textarea { flex: 1; resize: none; height: 46px; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }
+button { border: 0; border-radius: 10px; padding: 0 18px; font: 600 14px/1 inherit; background: var(--todd); color: var(--panel); cursor: pointer; }
+button:disabled { opacity: .5; cursor: default; }
+.side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.budget { padding: 14px 16px; display: grid; gap: 8px; }
+.bar { height: 10px; border-radius: 99px; background: var(--chip); overflow: hidden; }
+.bar > div { height: 100%; background: var(--ok); width: 0; transition: width .6s; }
+.row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+.row strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+#floor { padding: 14px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.desk { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bg); display: grid; gap: 5px; min-width: 0; }
+.desk .who { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.desk .who b { font-size: 15px; }
+.desk .sprite { font: 12px ui-monospace, Menlo, Consolas, monospace; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.desk .last { font: 12px ui-monospace, Menlo, Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.state { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 2px 7px; border-radius: 99px; background: var(--chip); }
+.state.working { color: var(--warn); } .state.promote, .state.keep { color: var(--ok); } .state.fire { color: var(--bad); } .state.redo { color: var(--warn); }
+.desk.gone { opacity: .62; }
+.jevbars { display: grid; grid-template-columns: auto 1fr auto; gap: 3px 8px; font-size: 11px; color: var(--muted); align-items: center; }
+.jevbars .b { height: 6px; border-radius: 99px; background: var(--chip); overflow: hidden; } .jevbars .b > div { height: 100%; background: var(--todd); }
+.empty { color: var(--muted); font-size: 14px; padding: 4px 0; grid-column: 1 / -1; }
+#files { padding: 12px 16px; font-size: 13px; display: grid; gap: 4px; }
+#files a { color: var(--todd); }
+footer { text-align: center; color: var(--muted); font-size: 12px; padding: 4px 16px 18px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🐦 Seagulled <small>Todd on Fly.io Sprites</small></h1>
+  <div class="chips" id="chips"></div>
+</header>
+<main>
+  <section id="chat">
+    <h2><span>Talk to Todd</span><span id="status"></span></h2>
+    <div id="feed"></div>
+    <form id="ask">
+      <textarea id="text" placeholder="Give Todd a goal. Example: build a tiny CLI that turns a CSV into a Markdown table, with tests." maxlength="4000"></textarea>
+      <button id="send">Send</button>
+    </form>
+  </section>
+  <div class="side">
+    <section>
+      <h2><span>HR · budget</span><span id="model"></span></h2>
+      <div class="budget">
+        <div class="bar"><div id="spent"></div></div>
+        <div class="row"><span>Estimated spend <strong id="spentText">–</strong></span><span>Hard stop <strong id="cap">–</strong></span></div>
+        <div class="row"><span>Hired <strong id="hires">0</strong></span><span>Fired <strong id="fires">0</strong></span><span>On the floor <strong id="floorCount">0</strong> / <strong id="maxW">3</strong></span></div>
+      </div>
+    </section>
+    <section>
+      <h2><span>The floor · one Sprite per worker</span></h2>
+      <div id="floor"><div class="empty">Nobody hired yet. Todd prefers it that way.</div></div>
+    </section>
+    <section>
+      <h2><span>Shipped files</span></h2>
+      <div id="files"><div class="empty">Nothing shipped yet.</div></div>
+    </section>
+  </div>
+</main>
+<footer>Every worker is a brand-new Fly.io Sprite. No Sprite holds an API key: models, memory, files and decisions go through Fly connectors.</footer>
+<script>
+const $ = s => document.querySelector(s);
+let since = 0;
+let lastGoals = [];
+const latestByWorker = {};
+const NAMES = { hr: 'HR desk', ollama: 'Ollama', gemini: 'Gemini', typesafe: 'Jev', pinecone: 'Pinecone', box: 'Box', slack: 'Slack', github: 'GitHub' };
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
+function linkify(s) { return esc(s).replace(/https?:\/\/[^\s<)]+/g, u => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`); }
+
+function add(ev) {
+  const feed = $('#feed');
+  if (ev.kind === 'worker') { latestByWorker[ev.worker] = ev.text; return; }
+  const el = document.createElement('div');
+  if (ev.kind === 'todd') { el.className = 'msg todd' + (ev.flyover ? ' flyover' : ''); el.innerHTML = `<b>${ev.flyover ? 'Todd flies over' : 'Todd'}</b>\n${linkify(ev.text)}`; }
+  else if (ev.kind === 'user') { el.className = 'msg user'; el.textContent = ev.text; }
+  else { el.className = `note ${ev.kind}`; el.innerHTML = linkify(ev.text); }
+  const stick = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80;
+  feed.appendChild(el);
+  if (stick) feed.scrollTop = feed.scrollHeight;
+}
+
+function renderFloor(goals) {
+  const g = goals.at(-1);
+  const floor = $('#floor');
+  if (!g || !g.team?.length) { floor.innerHTML = '<div class="empty">Nobody hired yet. Todd prefers it that way.</div>'; return; }
+  floor.innerHTML = g.team.map(m => {
+    const fate = m.status;
+    const gone = fate !== 'working';
+    const probs = m.verdict?.fateProbabilities;
+    const bars = probs ? `<div class="jevbars">${Object.entries(probs).map(([k, v]) => `<span>${esc(k)}</span><div class="b"><div style="width:${Math.round(v * 100)}%"></div></div><span>${Math.round(v * 100)}%</span>`).join('')}</div>` : '';
+    return `<div class="desk ${gone ? 'gone' : ''}">
+      <div class="who"><b>${esc(m.nickname)}</b><span class="state ${esc(fate)}">${gone ? (fate === 'fire' ? 'fired' : esc(fate) + ' · fired') : 'working'}</span></div>
+      <div class="sprite">${esc(m.worker)} · ${esc(m.role)}</div>
+      <div class="last">${esc(gone ? (m.review?.roast ?? '') : (latestByWorker[m.worker] ?? 'reading the brief…'))}</div>
+      ${bars}
+    </div>`;
+  }).join('');
+}
+
+function renderFiles(goals) {
+  const list = goals.filter(g => g.files?.length).slice(-4).reverse();
+  $('#files').innerHTML = list.length ? list.map(g => `<div><strong>${esc(g.title ?? g.text.slice(0, 40))}</strong>${g.box?.folderUrl ? ` · <a href="${esc(g.box.folderUrl)}" target="_blank" rel="noopener">Box folder</a>` : ''}<br>${g.files.map(f => `<a href="files/${g.id}/${encodeURIComponent(f)}" target="_blank">${esc(f)}</a>`).join(' · ')}</div>`).join('') : '<div class="empty">Nothing shipped yet.</div>';
+}
+
+async function tick() {
+  try {
+    const r = await fetch(`api/state?since=${since}`);
+    const s = await r.json();
+    for (const ev of s.events) { add(ev); since = Math.max(since, ev.id); }
+    $('#chips').innerHTML = Object.entries(NAMES).map(([k, n]) => `<span class="chip ${s.services?.[k] ? 'on' : ''}"><i></i>${n}</span>`).join('');
+    $('#status').textContent = s.busy ? 'Todd is busy' : 'Todd is free';
+    $('#send').disabled = s.busy;
+    if (s.model?.model) $('#model').textContent = `brain: ${s.model.model}`;
+    const b = s.budget;
+    if (b) {
+      $('#spent').style.width = Math.min(100, (b.spentUsd / b.capUsd) * 100) + '%';
+      $('#spentText').textContent = '$' + b.spentUsd.toFixed(3);
+      $('#cap').textContent = '$' + b.capUsd.toFixed(2);
+      $('#hires').textContent = b.hires; $('#fires').textContent = b.fires;
+      $('#floorCount').textContent = b.onTheFloor.length; $('#maxW').textContent = b.maxWorkers;
+    }
+    lastGoals = s.goals;
+    renderFloor(s.goals); renderFiles(s.goals);
+  } catch (e) { $('#status').textContent = 'Todd is asleep (waking…)'; }
+  setTimeout(tick, document.hidden ? 6000 : 1500);
+}
+
+$('#ask').addEventListener('submit', async e => {
+  e.preventDefault();
+  const text = $('#text').value.trim();
+  if (!text) return;
+  $('#send').disabled = true;
+  const r = await fetch('api/goal', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) });
+  if (r.ok) $('#text').value = '';
+});
+$('#text').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#ask').requestSubmit(); } });
+tick();
+</script>
+</body>
+</html>

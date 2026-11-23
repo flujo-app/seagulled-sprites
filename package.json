@@ -1,0 +1,17 @@
+{
+  "name": "seagulled-sprites",
+  "version": "0.1.0",
+  "description": "Talk to Todd. He hires a team of fresh Fly.io Sprites, checks what they bring back, and fires everyone.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "deploy": "node deploy/deploy.mjs",
+    "check": "node --check lib/gateway.mjs && node --check lib/brain.mjs && node --check lib/jev.mjs && node --check lib/memory.mjs && node --check lib/box.mjs && node --check hr/server.mjs && node --check todd/server.mjs && node --check worker/agent.mjs && node --check deploy/deploy.mjs"
+  },
+  "dependencies": {
+    "@fly/sprites": "0.2.5"
+  }
+}
