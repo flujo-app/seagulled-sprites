@@ -17,7 +17,7 @@ const DOOR_CODE = (await readFile(path.join(HR_DIR, 'door.code'), 'utf8')).trim(
 const client = new SpritesClient(HIRING_KEY, { timeout: 60_000 });
 
 const CAP_USD = Number(process.env.HR_BUDGET_USD ?? 2.5);          // hard stop for estimated spend
-const MAX_WORKERS = Number(process.env.HR_MAX_WORKERS ?? 3);         // the hiring key enforces 3 as well
+const MAX_WORKERS = Number(process.env.HR_MAX_WORKERS ?? 1);         // Free plan: 3 Sprites in total, and Todd + HR are two of them
 const MAX_MINUTES = Number(process.env.HR_MAX_MINUTES ?? 12);        // nobody stays longer than this
 const MEMORY_MB = Number(process.env.HR_WORKER_MEMORY_MB ?? 2048);
 // Upper-bound estimate per worker minute: 4 busy CPUs + 2 GB, at Sprites' published hourly prices.

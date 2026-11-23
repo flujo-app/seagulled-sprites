@@ -12,31 +12,30 @@ Built for Fly.io's Hacksgiving, 23–29 November 2026.
 
 ```
  you ──▶ Todd (Sprite "todd-boss", private, sleeps when idle)
-          │   brain ........ Ollama Cloud      ┐
-          │   verdicts ..... Jev (TypeSafe AI)  │  all through Fly connectors:
-          │   memory ....... Pinecone           │  no API key lives on any Sprite
-          │   filing ....... Box                │
-          │   chat ......... Slack (optional)   ┘
+          │   brain ........ Gemini (free) / Ollama ┐
+          │   verdicts ..... Jev (TypeSafe AI)      │  all through Fly connectors:
+          │   memory ....... Pinecone              │  no API key lives on any Sprite
+          │   filing ....... Box                   │
+          │   chat ......... Slack (optional)      ┘
           │
           └─ connector "todd-hr" ──▶ HR (Sprite "todd-hr")
-                                      holds the only hiring key: max 3 workers,
-                                      names todd-w-*, expires; keeps the budget
-                                      │
-                                      ├──▶ todd-w-developer-1a2b  (fresh Sprite)
-                                      ├──▶ todd-w-tester-3c4d     (fresh Sprite)
-                                      └──▶ todd-w-writer-5e6f     (fresh Sprite)
+                                      holds the only hiring key (names todd-w-*,
+                                      expires) and keeps the budget
+                                      │  one desk on the Free plan: workers take shifts
+                                      ├──▶ todd-w-developer-1a2b  (fresh Sprite, deleted after)
+                                      └──▶ todd-w-tester-3c4d     (next shift, fresh Sprite)
 ```
 
-- **Todd** plans the goal, hires 1–3 workers, flies over once while they work to complain, reviews each result against the evidence, and asks Jev for a typed verdict: ship or not, then promote, keep, redo or fire.
+- **Todd** plans the goal, hires 1–3 workers (one after another on the Free plan, which allows 3 Sprites in total: Todd, HR and one worker), flies over once while they work to complain, reviews each result against the evidence, and asks Jev for a typed verdict: ship or not, then promote, keep, redo or fire.
 - **HR** is a separate Sprite. It is the only place that can create Sprites, and its key can only make up to 3 Sprites named `todd-w-*`. Todd reaches HR through a Fly Custom API connector, so Todd never sees the hiring key or HR's door code.
-- **Workers** each get a brand-new Sprite with nothing on it but a small worker program. They think through the Ollama connector, write files, run commands, and hand back what they made. HR deletes them afterwards, or after 12 minutes at the latest.
+- **Workers** each get a brand-new Sprite with nothing on it but a small worker program. They think through the same model connector as Todd (Gemini's free tier, Ollama Cloud, or any OpenAI-style service behind a Custom API connector named `todd-brain`), write files, run commands, and hand back what they made. HR deletes them afterwards, or after 12 minutes at the latest.
 
 ## The money
 
 Everything is built to stay inside Fly's Free plan ($5 a month):
 
 - HR keeps a running estimate of what the workers cost and refuses to hire past a hard stop ($2.50 by default).
-- The hiring key itself allows only 3 worker Sprites at once and expires.
+- HR allows one worker at a time by default (`HR_MAX_WORKERS`), and the hiring key itself allows at most 3 and expires.
 - Workers are deleted as soon as their work is judged, and no worker lives longer than 12 minutes.
 - Todd and HR sleep when nobody talks to them, and sleeping Sprites are not billed for compute.
 
