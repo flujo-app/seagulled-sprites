@@ -109,7 +109,7 @@ const $ = s => document.querySelector(s);
 let since = 0;
 let lastGoals = [];
 const latestByWorker = {};
-const NAMES = { hr: 'HR desk', ollama: 'Ollama', gemini: 'Gemini', typesafe: 'Jev', pinecone: 'Pinecone', box: 'Box', slack: 'Slack', github: 'GitHub' };
+const NAMES = { hr: 'HR desk', brain: 'Free brain', ollama: 'Ollama', gemini: 'Gemini', typesafe: 'Jev', pinecone: 'Pinecone', box: 'Box', slack: 'Slack', github: 'GitHub' };
 
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
 function linkify(s) { return esc(s).replace(/https?:\/\/[^\s<)]+/g, u => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`); }
